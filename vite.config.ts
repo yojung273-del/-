@@ -12,7 +12,18 @@ function geminiApiPlugin(): Plugin {
     name: 'gemini-api-plugin',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (req.url === '/api/gemini' || req.url === '/api/gemini/route') {
+        const url = req.url || '';
+        if (url.startsWith('/api/gemini')) {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+          res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 200;
+            res.end();
+            return;
+          }
+
           if (req.method === 'POST') {
             let bodyStr = '';
             req.on('data', (chunk) => {

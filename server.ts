@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { processGeminiRequest } from './src/server/geminiHandler.js';
+import { processGeminiRequest } from './src/server/geminiHandler';
 
 dotenv.config();
 

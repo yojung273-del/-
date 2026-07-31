@@ -1,11 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Heart, BookOpen, AlertCircle, Info, RefreshCw } from 'lucide-react';
+import { Sparkles, Heart, BookOpen, AlertCircle, RefreshCw, Database } from 'lucide-react';
 import { DrawingCanvas } from './components/DrawingCanvas';
 import { DiaryForm } from './components/DiaryForm';
 import { AILetterDisplay } from './components/AILetterDisplay';
 import { DiaryHistoryModal } from './components/DiaryHistoryModal';
+import { GASConfigModal } from './components/GASConfigModal';
 import { CanvasRef, DiaryEntry, AnalyzeResponse } from './types';
+import {
+  getStoredGasUrl,
+  saveEntryToGAS,
+  fetchEntriesFromGAS,
+  deleteEntryFromGAS,
+} from './services/gasService';
 
 export default function App() {
   const canvasRef = useRef<CanvasRef | null>(null);
@@ -18,13 +25,20 @@ export default function App() {
   const [lastImageBase64, setLastImageBase64] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // History in localStorage
+  // History state & GAS integration
   const [historyEntries, setHistoryEntries] = useState<DiaryEntry[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isGasModalOpen, setIsGasModalOpen] = useState(false);
   const [isCurrentSaved, setIsCurrentSaved] = useState(false);
+  const [gasUrl, setGasUrl] = useState<string>('');
+  const [gasSyncStatus, setGasSyncStatus] = useState<string>('');
 
-  // Load history on mount
+  // Load history & GAS URL on mount
   useEffect(() => {
+    const currentGasUrl = getStoredGasUrl();
+    setGasUrl(currentGasUrl);
+
+    // Initial load from localStorage
     try {
       const saved = localStorage.getItem('mind_diary_history');
       if (saved) {
@@ -33,7 +47,30 @@ export default function App() {
     } catch (e) {
       console.error('Failed to load history:', e);
     }
+
+    // If GAS URL is set, fetch latest from Google Sheets
+    if (currentGasUrl) {
+      syncHistoryFromGAS(currentGasUrl);
+    }
   }, []);
+
+  const syncHistoryFromGAS = async (urlToUse?: string) => {
+    setGasSyncStatus('구글 시트 동기화 중...');
+    const result = await fetchEntriesFromGAS(urlToUse);
+    if (result.success && result.entries) {
+      setHistoryEntries(result.entries);
+      try {
+        localStorage.setItem('mind_diary_history', JSON.stringify(result.entries));
+      } catch (e) {
+        console.error(e);
+      }
+      setGasSyncStatus('✅ 구글 시트 동기화 완료');
+      setTimeout(() => setGasSyncStatus(''), 3000);
+    } else {
+      setGasSyncStatus(result.error || '구글 시트 동기화 실패');
+      setTimeout(() => setGasSyncStatus(''), 4000);
+    }
+  };
 
   const saveHistoryToStorage = (entries: DiaryEntry[]) => {
     try {
@@ -50,7 +87,6 @@ export default function App() {
     const imageBase64 = canvasRef.current ? canvasRef.current.getImageBase64() : '';
     const isCanvasEmpty = canvasRef.current ? canvasRef.current.isEmpty() : true;
 
-    // Validation
     if (!diaryText.trim() && isCanvasEmpty) {
       setErrorMsg('마음 일기(텍스트)를 작성하거나 그림을 먼저 그려주세요!');
       return;
@@ -62,7 +98,6 @@ export default function App() {
     setIsCurrentSaved(false);
 
     try {
-      // Call secure backend API route
       const res = await fetch('/api/gemini', {
         method: 'POST',
         headers: {
@@ -84,7 +119,7 @@ export default function App() {
         throw new Error(
           `API 서버 응답 오류 (${res.status}): ${
             res.status === 404
-              ? '서버 API 경로를 찾을 수 없습니다. 서버가 재시작 중일 수 있으니 잠시 후 다시 시도해 주세요.'
+              ? '서버 API 경로를 찾을 수 없습니다. 개발 서버가 준비 중일 수 있습니다.'
               : text.slice(0, 100)
           }`
         );
@@ -96,7 +131,6 @@ export default function App() {
 
       setAiLetter(data.letter || '');
 
-      // Smooth scroll down to letter
       setTimeout(() => {
         const letterEl = document.getElementById('ai-letter-section');
         if (letterEl) {
@@ -111,7 +145,7 @@ export default function App() {
     }
   };
 
-  const handleSaveToHistory = () => {
+  const handleSaveToHistory = async () => {
     if (!aiLetter) return;
 
     const newEntry: DiaryEntry = {
@@ -132,11 +166,29 @@ export default function App() {
     const updated = [newEntry, ...historyEntries];
     saveHistoryToStorage(updated);
     setIsCurrentSaved(true);
+
+    // Save to Google Sheets if GAS URL is configured
+    const activeGasUrl = getStoredGasUrl();
+    if (activeGasUrl) {
+      setGasSyncStatus('구글 시트로 저장 중...');
+      const result = await saveEntryToGAS(newEntry, activeGasUrl);
+      if (result.success) {
+        setGasSyncStatus('✅ 구글 시트 저장 완료!');
+      } else {
+        setGasSyncStatus(`❌ 구글 시트 저장 실패: ${result.error}`);
+      }
+      setTimeout(() => setGasSyncStatus(''), 4000);
+    }
   };
 
-  const handleDeleteHistoryEntry = (id: string) => {
+  const handleDeleteHistoryEntry = async (id: string) => {
     const updated = historyEntries.filter((item) => item.id !== id);
     saveHistoryToStorage(updated);
+
+    const activeGasUrl = getStoredGasUrl();
+    if (activeGasUrl) {
+      deleteEntryFromGAS(id, activeGasUrl);
+    }
   };
 
   const handleReset = () => {
@@ -148,6 +200,13 @@ export default function App() {
       canvasRef.current.clear();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGasSaved = (url: string) => {
+    setGasUrl(url);
+    if (url) {
+      syncHistoryFromGAS(url);
+    }
   };
 
   return (
@@ -172,21 +231,51 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsHistoryOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#5C5246] bg-[#F5EBE0] hover:bg-[#EBE0D3] border border-[#E6D5C3] rounded-xl transition-all shadow-2xs cursor-pointer"
-          >
-            <BookOpen className="w-4 h-4 text-[#FF6B6B]" />
-            <span>일기 모아보기</span>
-            {historyEntries.length > 0 && (
-              <span className="ml-0.5 px-2 py-0.5 bg-[#FF6B6B] text-white text-[10px] font-extrabold rounded-full">
-                {historyEntries.length}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* GAS Google Sheets Config Button */}
+            <button
+              type="button"
+              onClick={() => setIsGasModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                gasUrl
+                  ? 'bg-[#E8F5E9] text-[#2E7D32] border-[#C8E6C9] hover:bg-[#C8E6C9]'
+                  : 'bg-[#FAF9F5] text-[#6B5E52] border-[#E8E2D9] hover:bg-[#F0EBE1]'
+              }`}
+            >
+              <Database className="w-4 h-4 text-[#34A853]" />
+              <span className="hidden sm:inline">
+                {gasUrl ? '구글 시트 연동됨' : '구글 시트 연동'}
               </span>
-            )}
-          </button>
+              {gasUrl && <span className="w-2 h-2 rounded-full bg-[#34A853] animate-pulse" />}
+            </button>
+
+            {/* History Modal Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsHistoryOpen(true);
+                if (gasUrl) syncHistoryFromGAS(gasUrl);
+              }}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs font-bold text-[#5C5246] bg-[#F5EBE0] hover:bg-[#EBE0D3] border border-[#E6D5C3] rounded-xl transition-all shadow-2xs cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4 text-[#FF6B6B]" />
+              <span>일기 모아보기</span>
+              {historyEntries.length > 0 && (
+                <span className="ml-0.5 px-2 py-0.5 bg-[#FF6B6B] text-white text-[10px] font-extrabold rounded-full">
+                  {historyEntries.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
+
+      {/* Sync Status Toast Bar */}
+      {gasSyncStatus && (
+        <div className="bg-[#E8F5E9] text-[#2E7D32] border-b border-[#C8E6C9] px-4 py-1.5 text-center text-xs font-semibold animate-in fade-in">
+          {gasSyncStatus}
+        </div>
+      )}
 
       {/* Hero Header Greeting */}
       <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-6">
@@ -234,7 +323,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Main 2-Column Interface */}
+        {/* Main 2-Column Interface: Left (Story) | Right (Canvas) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Left: Diary Text Entry */}
           <div className="flex flex-col gap-3">
@@ -342,6 +431,13 @@ export default function App() {
         onClose={() => setIsHistoryOpen(false)}
         entries={historyEntries}
         onDeleteEntry={handleDeleteHistoryEntry}
+      />
+
+      {/* GAS Config Modal */}
+      <GASConfigModal
+        isOpen={isGasModalOpen}
+        onClose={() => setIsGasModalOpen(false)}
+        onSaved={handleGasSaved}
       />
     </div>
   );
