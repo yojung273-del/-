@@ -67,7 +67,7 @@ export const DrawingCanvas = forwardRef<CanvasRef, DrawingCanvasProps>(
     const saveState = useCallback(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return;
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -93,7 +93,7 @@ export const DrawingCanvas = forwardRef<CanvasRef, DrawingCanvasProps>(
       const container = containerRef.current;
       if (!canvas || !container) return;
 
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return;
 
       const rect = container.getBoundingClientRect();
@@ -126,18 +126,18 @@ export const DrawingCanvas = forwardRef<CanvasRef, DrawingCanvasProps>(
       const handleResize = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = canvas.width;
         tempCanvas.height = canvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
+        const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
         if (tempCtx) tempCtx.drawImage(canvas, 0, 0);
 
         initCanvas();
 
-        const newCtx = canvas.getContext('2d');
+        const newCtx = canvas.getContext('2d', { willReadFrequently: true });
         if (newCtx && tempCanvas.width > 0) {
           newCtx.drawImage(
             tempCanvas,

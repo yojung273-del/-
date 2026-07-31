@@ -75,7 +75,20 @@ export default function App() {
         }),
       });
 
-      const data: AnalyzeResponse = await res.json();
+      const contentType = res.headers.get('content-type');
+      let data: AnalyzeResponse;
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(
+          `API 서버 응답 오류 (${res.status}): ${
+            res.status === 404
+              ? '서버 API 경로를 찾을 수 없습니다. 서버가 재시작 중일 수 있으니 잠시 후 다시 시도해 주세요.'
+              : text.slice(0, 100)
+          }`
+        );
+      }
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Gemini 분석 요청에 실패했습니다.');
