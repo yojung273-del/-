@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Heart, BookOpen, AlertCircle, RefreshCw, Database } from 'lucide-react';
+import { Sparkles, Heart, BookOpen, AlertCircle, RefreshCw, Database, Edit3, Palette } from 'lucide-react';
 import { DiaryForm } from './components/DiaryForm';
+import { DrawingCanvas } from './components/DrawingCanvas';
 import { AILetterDisplay } from './components/AILetterDisplay';
 import { DiaryHistoryModal } from './components/DiaryHistoryModal';
 import { GASConfigModal } from './components/GASConfigModal';
-import { DiaryEntry, AnalyzeResponse } from './types';
+import { DiaryEntry, AnalyzeResponse, CanvasRef } from './types';
 import {
   getStoredGasUrl,
   saveEntryToGAS,
@@ -14,12 +15,15 @@ import {
 } from './services/gasService';
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<'story' | 'drawing'>('story');
   const [diaryText, setDiaryText] = useState('');
   const [selectedMood, setSelectedMood] = useState('기쁨');
+  const canvasRef = useRef<CanvasRef | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [aiLetter, setAiLetter] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [currentImageBase64, setCurrentImageBase64] = useState<string>('');
 
   // History state & GAS integration
   const [historyEntries, setHistoryEntries] = useState<DiaryEntry[]>([]);
@@ -80,11 +84,17 @@ export default function App() {
   const handleAnalyze = async () => {
     setErrorMsg(null);
 
-    if (!diaryText.trim()) {
-      setErrorMsg('오늘의 마음 일기(글)를 써주세요!');
+    let imageBase64Data = '';
+    if (canvasRef.current && !canvasRef.current.isEmpty()) {
+      imageBase64Data = canvasRef.current.getImageBase64();
+    }
+
+    if (!diaryText.trim() && !imageBase64Data) {
+      setErrorMsg('오늘의 마음 일기(글)나 마음 그림 중 최소 하나 이상을 작성해 주세요!');
       return;
     }
 
+    setCurrentImageBase64(imageBase64Data);
     setIsLoading(true);
     setAiLetter(null);
     setIsCurrentSaved(false);
@@ -97,6 +107,7 @@ export default function App() {
         },
         body: JSON.stringify({
           diaryText: diaryText.trim(),
+          imageBase64: imageBase64Data,
           mood: selectedMood,
         }),
       });
@@ -150,7 +161,7 @@ export default function App() {
       }),
       mood: selectedMood,
       diaryText: diaryText,
-      imageBase64: '',
+      imageBase64: currentImageBase64,
       aiLetter: aiLetter,
     };
 
@@ -184,6 +195,10 @@ export default function App() {
 
   const handleReset = () => {
     setDiaryText('');
+    if (canvasRef.current) {
+      canvasRef.current.clear();
+    }
+    setCurrentImageBase64('');
     setAiLetter(null);
     setErrorMsg(null);
     setIsCurrentSaved(false);
@@ -277,11 +292,11 @@ export default function App() {
                 오늘 당신의 마음에는 어떤 이야기가 머물고 있나요?
               </h2>
               <p className="text-xs sm:text-sm text-[#7A6B5C] leading-relaxed">
-                오늘 있었던 마음속 솔직한 이야기를 편하게 작성해 보세요.{' '}
+                오늘 있었던 마음속 이야기를 글이나 자유로운 그림으로 표현해 보세요.{' '}
                 <strong className="text-[#FF6B6B] font-semibold">
                   '✨ 마음 읽어주기'
                 </strong>{' '}
-                버튼을 누르면 다정한 AI 심리상담 교사가 마음 일기를 깊이 들여다보며 위로와 격려의 편지를 선물합니다.
+                버튼을 누르면 다정한 AI 심리상담 교사가 마음 일기와 그림을 깊이 들여다보며 위로와 격려의 편지를 선물합니다.
               </p>
             </div>
           </div>
@@ -311,22 +326,69 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Diary Form Section */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between px-1">
+        {/* Section Title & Navigation Tabs (오늘의 이야기 / 마음 그리기) */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
             <h2 className="text-lg font-bold flex items-center gap-2 text-[#2D2D2D]">
-              <span className="text-[#FF6B6B] font-black">01</span> 오늘의 이야기 작성
+              <span className="text-[#FF6B6B] font-black">01</span> 마음 표현하기
             </h2>
-            <span className="text-[11px] text-[#A08E7B] font-medium">
-              솔직한 마음 기록하기
-            </span>
+            
+            {/* Menu Tabs: 오늘의 이야기 / 마음 그리기 */}
+            <div className="inline-flex p-1 bg-[#F5EBE0] rounded-2xl border border-[#E6D5C3] shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('story')}
+                className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'story'
+                    ? 'bg-white text-[#FF6B6B] shadow-xs'
+                    : 'text-[#6B5E52] hover:text-[#2D2D2D]'
+                }`}
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>오늘의 이야기</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('drawing')}
+                className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'drawing'
+                    ? 'bg-white text-[#FF6B6B] shadow-xs'
+                    : 'text-[#6B5E52] hover:text-[#2D2D2D]'
+                }`}
+              >
+                <Palette className="w-4 h-4" />
+                <span>마음 그리기 🎨</span>
+              </button>
+            </div>
           </div>
-          <DiaryForm
-            diaryText={diaryText}
-            setDiaryText={setDiaryText}
-            selectedMood={selectedMood}
-            setSelectedMood={setSelectedMood}
-          />
+
+          {/* Tab Content Display */}
+          <div className="w-full">
+            {activeTab === 'story' ? (
+              <DiaryForm
+                diaryText={diaryText}
+                setDiaryText={setDiaryText}
+                selectedMood={selectedMood}
+                setSelectedMood={setSelectedMood}
+              />
+            ) : (
+              <div className="bg-white p-4 sm:p-6 rounded-3xl border-2 border-[#E6D5C3] shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs sm:text-sm font-bold text-[#5C5246] flex items-center gap-1.5">
+                    🎨 도화지에 마음 속 기분이나 자유로운 그림을 그려보세요
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('story')}
+                    className="text-xs text-[#FF6B6B] hover:underline font-semibold"
+                  >
+                    📝 글 작성으로 이동
+                  </button>
+                </div>
+                <DrawingCanvas ref={canvasRef} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Submit Action Area */}
@@ -350,7 +412,7 @@ export default function App() {
             )}
           </button>
           <p className="text-[11px] text-[#A08E7B] font-medium">
-            🔒 입력하신 글은 안전하게 전달되어 분석 후 위로의 편지로 전해집니다.
+            🔒 입력하신 글과 그림은 안전하게 전달되어 분석 후 위로의 편지로 전해집니다.
           </p>
         </div>
 
@@ -373,7 +435,7 @@ export default function App() {
                 지혜로운 AI 마음 선생님이 편지를 다듬고 있어요
               </h3>
               <p className="text-xs text-[#8B7E6D] max-w-md leading-relaxed">
-                작성하신 일기 문장에 깃든 마음에 공감하는 정성 어린 답장을 적는 중입니다...
+                작성하신 일기와 그려주신 그림 표현에 공감하는 정성 어린 답장을 적는 중입니다...
               </p>
             </motion.div>
           )}
