@@ -1,12 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Heart, BookOpen, AlertCircle, RefreshCw, Database } from 'lucide-react';
-import { DrawingCanvas } from './components/DrawingCanvas';
 import { DiaryForm } from './components/DiaryForm';
 import { AILetterDisplay } from './components/AILetterDisplay';
 import { DiaryHistoryModal } from './components/DiaryHistoryModal';
 import { GASConfigModal } from './components/GASConfigModal';
-import { CanvasRef, DiaryEntry, AnalyzeResponse } from './types';
+import { DiaryEntry, AnalyzeResponse } from './types';
 import {
   getStoredGasUrl,
   saveEntryToGAS,
@@ -15,14 +14,11 @@ import {
 } from './services/gasService';
 
 export default function App() {
-  const canvasRef = useRef<CanvasRef | null>(null);
-
   const [diaryText, setDiaryText] = useState('');
   const [selectedMood, setSelectedMood] = useState('기쁨');
 
   const [isLoading, setIsLoading] = useState(false);
   const [aiLetter, setAiLetter] = useState<string | null>(null);
-  const [lastImageBase64, setLastImageBase64] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // History state & GAS integration
@@ -84,17 +80,13 @@ export default function App() {
   const handleAnalyze = async () => {
     setErrorMsg(null);
 
-    const imageBase64 = canvasRef.current ? canvasRef.current.getImageBase64() : '';
-    const isCanvasEmpty = canvasRef.current ? canvasRef.current.isEmpty() : true;
-
-    if (!diaryText.trim() && isCanvasEmpty) {
-      setErrorMsg('마음 일기(텍스트)를 작성하거나 그림을 먼저 그려주세요!');
+    if (!diaryText.trim()) {
+      setErrorMsg('오늘의 마음 일기(글)를 써주세요!');
       return;
     }
 
     setIsLoading(true);
     setAiLetter(null);
-    setLastImageBase64(imageBase64);
     setIsCurrentSaved(false);
 
     try {
@@ -105,7 +97,6 @@ export default function App() {
         },
         body: JSON.stringify({
           diaryText: diaryText.trim(),
-          imageBase64: isCanvasEmpty ? '' : imageBase64,
           mood: selectedMood,
         }),
       });
@@ -159,7 +150,7 @@ export default function App() {
       }),
       mood: selectedMood,
       diaryText: diaryText,
-      imageBase64: lastImageBase64,
+      imageBase64: '',
       aiLetter: aiLetter,
     };
 
@@ -196,9 +187,6 @@ export default function App() {
     setAiLetter(null);
     setErrorMsg(null);
     setIsCurrentSaved(false);
-    if (canvasRef.current) {
-      canvasRef.current.clear();
-    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -213,10 +201,10 @@ export default function App() {
     <div className="min-h-screen bg-[#FFF9F5] text-[#2D2D2D] font-sans antialiased pb-16">
       {/* Navbar / Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E6D5C3] shadow-2xs">
-        <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#FF6B6B] rounded-xl flex items-center justify-center text-white text-xl shadow-xs">
-              🎨
+              📖
             </div>
             <div>
               <h1 className="font-bold text-lg sm:text-xl tracking-tight text-[#2D2D2D] flex items-center gap-2">
@@ -278,7 +266,7 @@ export default function App() {
       )}
 
       {/* Hero Header Greeting */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-8 pt-6">
         <div className="p-4 sm:p-6 mb-8 bg-white border-2 border-[#E6D5C3] rounded-3xl shadow-xs">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-[#FFD93D]/30 flex items-center justify-center shrink-0 mt-0.5 text-base">
@@ -286,14 +274,14 @@ export default function App() {
             </div>
             <div className="space-y-1">
               <h2 className="text-sm sm:text-base font-bold text-[#2D2D2D]">
-                오늘 당신의 마음에는 어떤 색깔과 이야기가 머물고 있나요?
+                오늘 당신의 마음에는 어떤 이야기가 머물고 있나요?
               </h2>
               <p className="text-xs sm:text-sm text-[#7A6B5C] leading-relaxed">
-                왼쪽에 오늘 있었던 마음의 소리를 적어보고, 오른쪽 캔버스에 지금 나의 마음 상태를 붓과 색으로 솔직하게 그려보세요.{' '}
+                오늘 있었던 마음속 솔직한 이야기를 편하게 작성해 보세요.{' '}
                 <strong className="text-[#FF6B6B] font-semibold">
                   '✨ 마음 읽어주기'
                 </strong>{' '}
-                버튼을 누르면 다정한 AI 심리상담 교사가 그림과 일기를 함께 들여다보며 위로의 편지를 전합니다.
+                버튼을 누르면 다정한 AI 심리상담 교사가 마음 일기를 깊이 들여다보며 위로와 격려의 편지를 선물합니다.
               </p>
             </div>
           </div>
@@ -323,42 +311,26 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Main 2-Column Interface: Left (Story) | Right (Canvas) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          {/* Left: Diary Text Entry */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-[#2D2D2D]">
-                <span className="text-[#FF6B6B] font-black">01</span> 오늘의 이야기
-              </h2>
-              <span className="text-[11px] text-[#A08E7B] font-medium">
-                마음속 깊은 솔직한 글쓰기
-              </span>
-            </div>
-            <DiaryForm
-              diaryText={diaryText}
-              setDiaryText={setDiaryText}
-              selectedMood={selectedMood}
-              setSelectedMood={setSelectedMood}
-            />
+        {/* Diary Form Section */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-lg font-bold flex items-center gap-2 text-[#2D2D2D]">
+              <span className="text-[#FF6B6B] font-black">01</span> 오늘의 이야기 작성
+            </h2>
+            <span className="text-[11px] text-[#A08E7B] font-medium">
+              솔직한 마음 기록하기
+            </span>
           </div>
-
-          {/* Right: Drawing Canvas */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-[#2D2D2D]">
-                <span className="text-[#FF6B6B] font-black">02</span> 마음 그리기
-              </h2>
-              <span className="text-[11px] text-[#A08E7B] font-medium">
-                자유로운 그림으로 감정 표현하기
-              </span>
-            </div>
-            <DrawingCanvas ref={canvasRef} />
-          </div>
+          <DiaryForm
+            diaryText={diaryText}
+            setDiaryText={setDiaryText}
+            selectedMood={selectedMood}
+            setSelectedMood={setSelectedMood}
+          />
         </div>
 
         {/* Submit Action Area */}
-        <div className="mt-10 flex flex-col items-center justify-center gap-3">
+        <div className="mt-8 flex flex-col items-center justify-center gap-3">
           <button
             type="button"
             disabled={isLoading}
@@ -378,7 +350,7 @@ export default function App() {
             )}
           </button>
           <p className="text-[11px] text-[#A08E7B] font-medium">
-            🔒 입력하신 글과 그림은 안전하게 백엔드 Gemini API로 수신되어 분석 후 편지로 전해집니다.
+            🔒 입력하신 글은 안전하게 전달되어 분석 후 위로의 편지로 전해집니다.
           </p>
         </div>
 
@@ -401,7 +373,7 @@ export default function App() {
                 지혜로운 AI 마음 선생님이 편지를 다듬고 있어요
               </h3>
               <p className="text-xs text-[#8B7E6D] max-w-md leading-relaxed">
-                그림의 색채와 기운, 적어주신 일기 문장에 깃든 마음에 공감하는 정성 어린 답장을 적는 중입니다...
+                작성하신 일기 문장에 깃든 마음에 공감하는 정성 어린 답장을 적는 중입니다...
               </p>
             </motion.div>
           )}
@@ -412,7 +384,7 @@ export default function App() {
           <div id="ai-letter-section" className="mt-12">
             <div className="mb-3 px-1">
               <h2 className="text-lg font-bold flex items-center gap-2 text-[#2D2D2D]">
-                <span className="text-[#FF6B6B] font-black">03</span> AI 선생님의 마음 배달
+                <span className="text-[#FF6B6B] font-black">02</span> AI 선생님의 마음 배달
               </h2>
             </div>
             <AILetterDisplay

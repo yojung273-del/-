@@ -10,7 +10,7 @@ export async function processGeminiRequest(body: {
   if (!diaryText && !imageBase64) {
     return {
       success: false,
-      error: '일기 내용이나 그림 중 최소 하나 이상을 제공해 주세요.',
+      error: '일기 내용을 입력해 주세요.',
     };
   }
 
@@ -33,8 +33,8 @@ export async function processGeminiRequest(body: {
 
   const parts: any[] = [];
 
-  // Handle image base64 parsing safely
-  if (imageBase64 && typeof imageBase64 === 'string') {
+  // Handle image base64 parsing safely if provided
+  if (imageBase64 && typeof imageBase64 === 'string' && imageBase64.trim() !== '') {
     const matches = imageBase64.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
     let mimeType = 'image/png';
     let rawBase64 = imageBase64;
@@ -56,16 +56,15 @@ export async function processGeminiRequest(body: {
 
   const moodText = mood ? `[오늘의 기분 표식: ${mood}]\n` : '';
   const promptText = `너는 학생들의 마음을 어루만져 주는 다정하고 따뜻한 초등학교/중학교 심리 상담 교사야.
-학생이 쓴 마음 일기와 함께 그린 그림을 꼼꼼히 살피고, 그림의 색상, 선의 느낌, 형태나 분위기도 자연스럽게 언급하며 학생의 마음에 공감하고 따뜻한 위로와 응원을 전하는 편지(답장)를 작성해 줘.
+학생이 쓴 마음 일기와 기분을 꼼꼼히 읽고, 학생의 마음에 온전히 공감하고 따뜻한 위로와 조언, 응원을 전하는 편지(답장)를 작성해 줘.
 
 ${moodText}[학생이 쓴 일기 내용]
-${diaryText || '(그림으로만 표현함)'}
+${diaryText || ''}
 
 [작성 지침]
-1. 따뜻하고 친근한 어조('~했구나', '~란다', '소중한 친구야')로 써줘.
-2. 그림에서 느껴지는 색감이나 분위기(예: 코랄 빨강, 노랑, 초록, 거친 선 등)를 언급하여 학생이 그림을 통한 표현이 전달되었음을 느끼게 해줘.
-3. 학생의 일기 속 상황과 감정에 온전히 공감하고 깊은 경청과 따뜻한 조언, 응원을 보내줘.
-4. 분량은 가독성 높게 3~4문단으로 정성스럽게 나누어 적어줘.`;
+1. 따뜻하고 친근하며 다정한 어조('~했구나', '~란다', '소중한 친구야')로 써줘.
+2. 학생의 일기 속 상황과 감정에 깊이 경청하고 진심 어린 공감과 용기를 북돋워 줘.
+3. 분량은 가독성 높게 3~4문단으로 정성스럽게 나누어 적어줘.`;
 
   parts.push({ text: promptText });
 
