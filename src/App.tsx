@@ -15,7 +15,6 @@ import {
 } from './services/gasService';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'story' | 'drawing'>('story');
   const [diaryText, setDiaryText] = useState('');
   const [selectedMood, setSelectedMood] = useState('기쁨');
   const canvasRef = useRef<CanvasRef | null>(null);
@@ -216,7 +215,7 @@ export default function App() {
     <div className="min-h-screen bg-[#FFF9F5] text-[#2D2D2D] font-sans antialiased pb-16">
       {/* Navbar / Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E6D5C3] shadow-2xs">
-        <div className="max-w-4xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#FF6B6B] rounded-xl flex items-center justify-center text-white text-xl shadow-xs">
               📖
@@ -281,7 +280,7 @@ export default function App() {
       )}
 
       {/* Hero Header Greeting */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-8 pt-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-6">
         <div className="p-4 sm:p-6 mb-8 bg-white border-2 border-[#E6D5C3] rounded-3xl shadow-xs">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-[#FFD93D]/30 flex items-center justify-center shrink-0 mt-0.5 text-base">
@@ -292,11 +291,11 @@ export default function App() {
                 오늘 당신의 마음에는 어떤 이야기가 머물고 있나요?
               </h2>
               <p className="text-xs sm:text-sm text-[#7A6B5C] leading-relaxed">
-                오늘 있었던 마음속 이야기를 글이나 자유로운 그림으로 표현해 보세요.{' '}
+                오늘의 이야기(글)와 마음 그리기(그림)를 함께 작성해 보세요.{' '}
                 <strong className="text-[#FF6B6B] font-semibold">
                   '✨ 마음 읽어주기'
                 </strong>{' '}
-                버튼을 누르면 다정한 AI 심리상담 교사가 마음 일기와 그림을 깊이 들여다보며 위로와 격려의 편지를 선물합니다.
+                버튼을 누르면 다정한 AI 심리상담 교사가 글과 그림을 깊이 들여다보며 위로와 격려의 편지를 선물합니다.
               </p>
             </div>
           </div>
@@ -326,68 +325,52 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Section Title & Navigation Tabs (오늘의 이야기 / 마음 그리기) */}
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+        {/* 2-Column Split Layout: Left (오늘의 이야기) & Right (마음 그리기) */}
+        <div className="space-y-4">
+          <div className="px-1">
             <h2 className="text-lg font-bold flex items-center gap-2 text-[#2D2D2D]">
-              <span className="text-[#FF6B6B] font-black">01</span> 마음 표현하기
+              <span className="text-[#FF6B6B] font-black">01</span> 마음 표현하기 (글 & 그림)
             </h2>
-            
-            {/* Menu Tabs: 오늘의 이야기 / 마음 그리기 */}
-            <div className="inline-flex p-1 bg-[#F5EBE0] rounded-2xl border border-[#E6D5C3] shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab('story')}
-                className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                  activeTab === 'story'
-                    ? 'bg-white text-[#FF6B6B] shadow-xs'
-                    : 'text-[#6B5E52] hover:text-[#2D2D2D]'
-                }`}
-              >
-                <Edit3 className="w-4 h-4" />
-                <span>오늘의 이야기</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('drawing')}
-                className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                  activeTab === 'drawing'
-                    ? 'bg-white text-[#FF6B6B] shadow-xs'
-                    : 'text-[#6B5E52] hover:text-[#2D2D2D]'
-                }`}
-              >
-                <Palette className="w-4 h-4" />
-                <span>마음 그리기 🎨</span>
-              </button>
-            </div>
           </div>
 
-          {/* Tab Content Display */}
-          <div className="w-full">
-            {activeTab === 'story' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            {/* Left Column: 오늘의 이야기 (글 작성 & 기분 선택) */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-bold text-[#5C5246] flex items-center gap-1.5">
+                  <Edit3 className="w-4 h-4 text-[#FF6B6B]" />
+                  오늘의 이야기 (글 작성)
+                </h3>
+                <span className="text-[11px] text-[#A08E7B] font-medium">
+                  솔직한 마음 문장
+                </span>
+              </div>
               <DiaryForm
                 diaryText={diaryText}
                 setDiaryText={setDiaryText}
                 selectedMood={selectedMood}
                 setSelectedMood={setSelectedMood}
               />
-            ) : (
-              <div className="bg-white p-4 sm:p-6 rounded-3xl border-2 border-[#E6D5C3] shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm font-bold text-[#5C5246] flex items-center gap-1.5">
-                    🎨 도화지에 마음 속 기분이나 자유로운 그림을 그려보세요
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('story')}
-                    className="text-xs text-[#FF6B6B] hover:underline font-semibold"
-                  >
-                    📝 글 작성으로 이동
-                  </button>
-                </div>
+            </div>
+
+            {/* Right Column: 마음 그리기 (도화지 & 페인팅) */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-bold text-[#5C5246] flex items-center gap-1.5">
+                  <Palette className="w-4 h-4 text-[#FF6B6B]" />
+                  마음 그리기 (도화지)
+                </h3>
+                <span className="text-[11px] text-[#A08E7B] font-medium">
+                  자유로운 그림 표현
+                </span>
+              </div>
+              <div className="bg-white p-4 sm:p-6 rounded-3xl border-2 border-[#E6D5C3] shadow-xs space-y-3">
+                <p className="text-xs text-[#7A6B5C]">
+                  🎨 지금 느끼는 감정을 색깔이나 모양으로 마음껏 표현해 보세요.
+                </p>
                 <DrawingCanvas ref={canvasRef} />
               </div>
-            )}
+            </div>
           </div>
         </div>
 
