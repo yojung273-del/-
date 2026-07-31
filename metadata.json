@@ -1,0 +1,6 @@
+{
+  "name": "마음 일기장",
+  "description": "학생들의 마음 상태 그림과 일기를 AI 심리상담 교사가 함께 읽고 따뜻한 공감 편지를 전하는 웹 앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
