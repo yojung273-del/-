@@ -13,10 +13,11 @@ function geminiApiPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || '';
-        if (url.startsWith('/api/gemini')) {
+        // Capture any request matching /api/gemini
+        if (url.includes('/api/gemini')) {
           res.setHeader('Access-Control-Allow-Origin', '*');
           res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-          res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+          res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
 
           if (req.method === 'OPTIONS') {
             res.statusCode = 200;

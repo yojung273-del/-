@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { processGeminiRequest } from './src/server/geminiHandler';
+import { processGeminiRequest } from './src/server/geminiHandler.js';
 
 dotenv.config();
 
@@ -16,7 +16,7 @@ async function startServer() {
   // Body parser with 10mb limit for base64 image data
   app.use(express.json({ limit: '10mb' }));
 
-  // API Route for Gemini analysis
+  // API Route for Gemini analysis - Match multiple path variations
   const handleGeminiAnalysis = async (req: express.Request, res: express.Response) => {
     try {
       const result = await processGeminiRequest(req.body);
@@ -30,8 +30,7 @@ async function startServer() {
     }
   };
 
-  app.post('/api/gemini', handleGeminiAnalysis);
-  app.post('/api/gemini/route', handleGeminiAnalysis);
+  app.all('/api/gemini*', handleGeminiAnalysis);
 
   // Vite middleware setup
   if (process.env.NODE_ENV !== 'production') {

@@ -90,7 +90,12 @@ export async function deleteEntryFromGAS(
   }
 }
 
-export const GAS_SCRIPT_TEMPLATE = `// Google Apps Script (Code.gs) - 구글 시트 데이터베이스 연동 코드
+export const GAS_SCRIPT_TEMPLATE = `// Google Apps Script (Code.gs) - 구글 시트 연동 스크립트
+// [참고] script.google.com에서 독립형 스크립트로 만드신 경우 
+// 아래 SPREADSHEET_ID에 구글 시트 URL 주소의 ID (예: /d/1a2b3c.../edit 의 1a2b3c...)를 적어주세요.
+// 구글 시트 상단 메뉴 [확장 프로그램 > Apps Script]에서 바로 만든 경우는 빈값("")으로 두셔도 자동 연결됩니다.
+var SPREADSHEET_ID = ""; 
+
 function doGet(e) {
   return handleRequest(e, 'GET');
 }
@@ -99,10 +104,46 @@ function doPost(e) {
   return handleRequest(e, 'POST');
 }
 
+function getWorksheet() {
+  var ss = null;
+
+  // 1. SPREADSHEET_ID가 지정된 경우
+  if (SPREADSHEET_ID && SPREADSHEET_ID.trim() !== "") {
+    try {
+      ss = SpreadsheetApp.openById(SPREADSHEET_ID.trim());
+    } catch(err) {
+      throw new Error("SPREADSHEET_ID로 시트를 열 수 없습니다: " + err.toString());
+    }
+  }
+
+  // 2. 바인딩된 시트 확인 (구글 시트 메뉴 > 확장 프로그램 > Apps Script)
+  if (!ss) {
+    try {
+      ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.getActive();
+    } catch(err) {}
+  }
+
+  // 3. 구글 드라이브에서 '내 마음 일기장 DB' 시트를 찾거나 자동 생성
+  if (!ss) {
+    try {
+      var files = DriveApp.getFilesByName("내 마음 일기장 DB");
+      if (files.hasNext()) {
+        ss = SpreadsheetApp.open(files.next());
+      } else {
+        ss = SpreadsheetApp.create("내 마음 일기장 DB");
+      }
+    } catch(err) {
+      throw new Error("스프레드시트를 연결할 수 없습니다. 구글 시트의 [확장 프로그램 > Apps Script]에서 스크립트를 생성하시거나, script.google.com 사용 시 코드 6행의 SPREADSHEET_ID에 구글 시트 ID를 입력해주세요.");
+    }
+  }
+
+  return ss.getActiveSheet() || ss.getSheets()[0];
+}
+
 function handleRequest(e, method) {
   var output = {};
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getWorksheet();
     
     // 헤더 열 자동 생성
     if (sheet.getLastRow() === 0) {

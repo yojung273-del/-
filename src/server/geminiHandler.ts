@@ -70,20 +70,33 @@ ${diaryText || '(그림으로만 표현함)'}
   parts.push({ text: promptText });
 
   let response;
-  try {
-    response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: { parts },
-    });
-  } catch (geminiErr: any) {
-    console.warn('gemini-2.5-flash call failed, trying gemini-3.6-flash fallback:', geminiErr?.message);
-    response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: { parts },
-    });
+  // Try models in order: gemini-2.5-flash -> gemini-2.0-flash -> gemini-1.5-flash
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      response = await ai.models.generateContent({
+        model: modelName,
+        contents: { parts },
+      });
+      if (response && response.text) {
+        break;
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini Model ${modelName} failed]:`, err?.message || err);
+      lastError = err;
+    }
   }
 
-  const letterText = response.text || '선생님이 마음을 담아 답장을 작성하는 중 오류가 발생했습니다. 다시 시도해 주세요.';
+  const letterText = response?.text;
+
+  if (!letterText) {
+    return {
+      success: false,
+      error: `Gemini API 호출 실패: ${lastError?.message || '응답을 생성할 수 없습니다.'}`,
+    };
+  }
 
   return {
     success: true,

@@ -122,26 +122,31 @@ export const GASConfigModal: React.FC<GASConfigModalProps> = ({ isOpen, onClose,
           <div className="bg-[#FAF9F5] p-4 rounded-xl border border-[#F0EBE1] space-y-3">
             <h3 className="font-bold text-[#2D2D2D] flex items-center gap-1.5 text-xs sm:text-sm">
               <HelpCircle className="w-4 h-4 text-[#34A853]" />
-              구글 시트 백엔드 구축 3분 가이드
+              구글 시트 백엔드 구축 3분 가이드 (TypeError 오류 해결 가이드)
             </h3>
             <ol className="list-decimal list-inside space-y-1.5 text-xs text-[#6B5E52] leading-relaxed">
               <li>
                 새 <strong className="text-[#2D2D2D]">구글 스프레드시트</strong>를 만듭니다.
               </li>
               <li>
-                상단 메뉴의 <strong className="text-[#2D2D2D]">확장 프로그램 &gt; Apps Script</strong>를 클릭합니다.
+                시트 상단 메뉴의 <strong className="text-[#2D2D2D]">확장 프로그램 &gt; Apps Script</strong>를 클릭합니다. (💡 <em>script.google.com에서 직접 만든 경우 아래 코드 6행의 SPREADSHEET_ID에 시트 ID를 적어주세요</em>)
               </li>
               <li>
-                아래 복사 버튼을 눌러 스크립트 코드를 복사한 뒤, <strong className="text-[#2D2D2D]">Code.gs</strong> 편집기에 전체 덮어쓰기합니다.
+                아래 복사 버튼을 눌러 개선된 스크립트 코드를 복사한 뒤, <strong className="text-[#2D2D2D]">Code.gs</strong> 편집기에 전체 덮어쓰기합니다.
               </li>
               <li>
-                우측 상단 <strong className="text-[#2D2D2D]">배포 &gt; 새 배포</strong>를 클릭하고, 유형을 <strong className="text-[#2D2D2D]">웹 앱</strong>으로 설정합니다.
+                우측 상단 <strong className="text-[#2D2D2D]">배포 &gt; 새 배포</strong> (기존 배포가 있다면 <strong>배포 관리 &gt; 편집 &gt; 새 버전</strong>)를 클릭하고, 유형을 <strong className="text-[#2D2D2D]">웹 앱</strong>으로 설정합니다.
               </li>
               <li>
                 <strong className="text-[#2D2D2D]">액세스 권한이 있는 사용자</strong>를 <strong className="text-[#FF6B6B]">모든 사용자 (Anyone)</strong>로 지정 후 배포합니다.
               </li>
-              <li>생성된 Web App URL을 복사하여 위 입력창에 붙여넣습니다.</li>
+              <li>생성된 Web App URL을 복사하여 위 입력창에 붙여넣고 [연동 테스트]를 누릅니다.</li>
             </ol>
+            <div className="mt-2 p-2 bg-[#FFF3CD] border border-[#FFEBAA] rounded-lg text-[11px] text-[#856404]">
+              ⚠️ <strong>'Cannot read properties of null (reading getActiveSheet)' 오류 발생 시:</strong><br />
+              1) 구글 시트 상단 [확장 프로그램 &gt; Apps Script]를 통해 접근하지 않고 script.google.com에서 별도로 생성했기 때문입니다.<br />
+              2) 아래 수정된 코드를 복사해서 붙여넣으신 뒤 <strong>배포 &gt; 새 배포(새 버전)</strong>를 진행하시면 자동 연결 또는 시트 생성이 진행되어 깔끔하게 해결됩니다.
+            </div>
           </div>
 
           {/* Section 3: Code block */}
