@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { processGeminiRequest } from '../src/server/geminiHandler';
 
+export const config = {
+  maxDuration: 30, // Extend Vercel function timeout allowance
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS configuration for Vercel Serverless Function
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -12,8 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
@@ -21,13 +24,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await processGeminiRequest(req.body || {});
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    }
+    body = body || {};
+
+    const result = await processGeminiRequest(body);
     return res.status(result.success ? 200 : 400).json(result);
   } catch (err: any) {
-    console.error('Vercel API route error:', err);
+    console.error('Vercel API route invocation error:', err);
     return res.status(500).json({
       success: false,
-      error: err.message || '서버 응답 처리 중 오류가 발생했습니다.',
+      error: `Vercel 함수 실행 오류: ${err?.message || '알 수 없는 서버 오류가 발생했습니다.'}`,
     });
   }
 }

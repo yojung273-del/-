@@ -7,7 +7,7 @@ export async function processGeminiRequest(body: {
 }): Promise<{ success: boolean; letter?: string; error?: string }> {
   const { diaryText, imageBase64, mood } = body;
 
-  if (!diaryText && !imageBase64) {
+  if (!diaryText && (!imageBase64 || imageBase64.trim() === '')) {
     return {
       success: false,
       error: '일기 내용을 입력해 주세요.',
@@ -15,15 +15,15 @@ export async function processGeminiRequest(body: {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  if (!apiKey || apiKey.trim() === '') {
     return {
       success: false,
-      error: 'GEMINI_API_KEY가 설정되어 있지 않습니다. Settings > Secrets에서 GEMINI_API_KEY를 등록해 주세요.',
+      error: 'Vercel 환경 변수(Environment Variables)에 GEMINI_API_KEY가 등록되어 있지 않습니다. Vercel 프로젝트 Settings > Environment Variables 메뉴에서 GEMINI_API_KEY를 설정하고 다시 배포(Redeploy)해 주세요.',
     };
   }
 
   const ai = new GoogleGenAI({
-    apiKey,
+    apiKey: apiKey.trim(),
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
@@ -69,8 +69,8 @@ ${diaryText || ''}
   parts.push({ text: promptText });
 
   let response;
-  // Try models in order: gemini-2.5-flash -> gemini-2.0-flash -> gemini-1.5-flash
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  // Primary model gemini-2.5-flash, fallback to gemini-2.0-flash
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
@@ -93,7 +93,7 @@ ${diaryText || ''}
   if (!letterText) {
     return {
       success: false,
-      error: `Gemini API 호출 실패: ${lastError?.message || '응답을 생성할 수 없습니다.'}`,
+      error: `Gemini API 호출 실패: ${lastError?.message || '응답을 생성할 수 없습니다. Vercel의 GEMINI_API_KEY 값을 확인해 주세요.'}`,
     };
   }
 
