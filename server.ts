@@ -13,10 +13,21 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Body parser with 10mb limit for base64 image data
+  // Body parser with 10mb limit
   app.use(express.json({ limit: '10mb' }));
 
-  // API Route for Gemini analysis - Match multiple path variations
+  // Explicit CORS for local API route
+  app.use('/api', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
+  // API Route for Gemini analysis - Catch any variation under /api/gemini
   const handleGeminiAnalysis = async (req: express.Request, res: express.Response) => {
     try {
       const result = await processGeminiRequest(req.body);
@@ -30,9 +41,15 @@ async function startServer() {
     }
   };
 
-  app.all('/api/gemini*', handleGeminiAnalysis);
+  app.post('/api/gemini', handleGeminiAnalysis);
+  app.all('/api/gemini/*', handleGeminiAnalysis);
 
-  // Vite middleware setup
+  // Health check endpoint
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  // Vite middleware setup for dev mode
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
